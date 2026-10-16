@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pernundle/userinput</title>
+<style>
+:root {
+color-scheme: light;
+}
+
+* {
+box-sizing: border-box;
+}
+
+html,
+body {
+margin: 0;
+padding: 0;
+background: #ffffff;
+color: #111827;
+font-family: Arial, sans-serif;
+font-size: 1rem;
+line-height: 1.72;
+padding: 28px 24px;
+word-break: break-word;
+}
+
+main.markdown-export {
+max-width: 960px;
+margin: 0 auto;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+margin: 1.3em 0 0.55em;
+color: #0f172a;
+font-weight: 700;
+line-height: 1.3;
+}
+
+h1:first-child,
+h2:first-child,
+h3:first-child,
+h4:first-child,
+h5:first-child,
+h6:first-child,
+p:first-child,
+ul:first-child,
+ol:first-child,
+blockquote:first-child,
+pre:first-child,
+.table-wrapper:first-child {
+margin-top: 0;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.65rem; }
+h3 { font-size: 1.35rem; }
+h4 { font-size: 1.15rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.95rem; }
+
+p,
+ul,
+ol,
+blockquote,
+pre,
+hr,
+figure,
+.table-wrapper,
+.katex-display,
+.math-display-image {
+margin: 0 0 1rem;
+}
+
+a {
+color: #1d4ed8;
+text-decoration: underline;
+}
+
+strong,
+b {
+font-weight: 700;
+}
+
+em,
+i {
+font-style: italic;
+}
+
+hr {
+border: 0;
+border-top: 1px solid #dbe2ea;
+}
+
+ul,
+ol {
+padding-left: 1.45rem;
+}
+
+li {
+margin: 0.28rem 0;
+}
+
+li > p {
+margin: 0 0 0.4rem;
+}
+
+li > ul,
+li > ol {
+margin-top: 0.4rem;
+margin-bottom: 0.4rem;
+}
+
+.contains-task-list,
+.task-list-item {
+list-style: none;
+}
+
+.task-list-item input[type="checkbox"] {
+margin-right: 0.35rem;
+}
+
+blockquote {
+border-left: 4px solid #2563eb;
+background: #f8fafc;
+color: #334155;
+padding: 0.8rem 1rem;
+}
+
+code {
+color: #14425A;
+font-style: italic;
+font-weight: 700;
+font-family: Consolas, monospace;
+border-radius: 4px;
+font-size: 1rem;
+}
+
+pre {
+background: #0f172a;
+color: #e2e8f0;
+border-radius: 10px;
+padding: 14px 16px;
+overflow-x: auto;
+white-space: pre-wrap;
+}
+
+pre code {
+background: transparent;
+padding: 0;
+color: inherit;
+}
+
+.table-wrapper {
+width: 100%;
+overflow-x: auto;
+}
+
+table {
+width: 100%;
+min-width: 100%;
+border-collapse: collapse;
+border-spacing: 0;
+font-size: 0.96em;
+}
+
+th,
+td {
+border: 1px solid #d1d5db;
+padding: 8px 10px;
+vertical-align: top;
+text-align: left;
+}
+
+thead th,
+th {
+background: #f8fafc;
+font-weight: 700;
+}
+
+tbody tr:nth-child(even) {
+background: #fbfdff;
+}
+
+img {
+max-width: 100%;
+height: auto;
+}
+
+.katex-display {
+overflow-x: auto;
+overflow-y: hidden;
+padding: 0.25rem 0;
+}
+
+.mermaid {
+margin: 1rem 0;
+text-align: center;
+}
+
+.mermaid > svg,
+.mermaid svg {
+display: block;
+max-width: 100%;
+height: auto;
+margin: 0 auto;
+}
+
+.math-inline-image {
+display: inline-block;
+max-width: 100%;
+}
+
+.math-display-image {
+text-align: center;
+}
+
+.math-display-image img {
+display: inline-block;
+}
+
+svg {
+max-width: 100%;
+}
+</style>
+</head>
+  <body>
+    <main class="markdown-export">
+<h1 id="user-content-pernundleuserinput">pernundle/userinput</h1>
+<p><code>userinput</code> binds fields in a Go configuration struct to three common sources of program input:</p>
+<ul>
+<li>environment variables</li>
+<li>command-line flags</li>
+<li>interactive terminal prompts</li>
+</ul>
+<p>The package lets one struct describe where input may come from, how it is named, how it is validated, and what default value should be retained when the user supplies nothing.</p>
+<p>Supported field kinds are <code>bool</code>, <code>int</code>, and <code>string</code>, including named types whose underlying kind is one of those three.</p>
+<h2 id="user-content-example">Example</h2>
+<pre><code class="language-go">type Config struct {
+    Host       string `input:"env,flag,term" name:"host_name" usage:"Server host name" regexp:"^[A-Za-z0-9.-]+$"`
+    Port       int    `input:"env,flag,term" usage:"Server port number" min:"1" max:"65535"`
+    Enabled    bool   `input:"env,flag,term" usage:"Enable server"`
+    AdminAcct  string `input:"term" usage:"Administrator account"`
+    Password   string `input:"term,noecho" usage:"Administrator password"`
+}
+
+cfg := Config{
+    Host: "localhost",
+    Port: 8080,
+}
+
+ui := userinput.NewUserInput(&amp;cfg)
+ui.SetPrefix("myapp_")
+
+if errs := ui.BindInput(); len(errs) != 0 {
+    for _, err := range errs {
+        fmt.Println(err)
+    }
+    return
+}
+</code></pre>
+<p>With the prefix above, <code>Host</code> is available as:</p>
+<pre><code class="language-text">Environment: MYAPP_HOST_NAME
+Flag:        -myapp-host-name
+Terminal:    Server host name
+</code></pre>
+<p>If no source supplies a value, the existing value in <code>cfg</code> remains unchanged.</p>
+<h2 id="user-content-input-sources">Input Sources</h2>
+<p>The <code>input</code> struct tag selects one or more sources for a field.</p>
+<div class="table-wrapper"><table><thead><tr><th>Tag</th><th>Meaning</th></tr></thead><tbody><tr><td><code>input:"env"</code></td><td>Read from an environment variable.</td></tr><tr><td><code>input:"flag"</code></td><td>Register a command-line flag.</td></tr><tr><td><code>input:"term"</code></td><td>Prompt on the terminal.</td></tr><tr><td><code>input:"env,flag"</code></td><td>Accept environment or flag input.</td></tr><tr><td><code>input:"env,term"</code></td><td>Accept environment or terminal input.</td></tr><tr><td><code>input:"flag,term"</code></td><td>Accept flag or terminal input.</td></tr><tr><td><code>input:"env,flag,term"</code></td><td>Accept all three sources.</td></tr><tr><td><code>input:"term,noecho"</code></td><td>Prompt without echoing string or integer input.</td></tr><tr><td><code>input:"flag,noecho"</code></td><td>Hide the default value from package-generated flag help.</td></tr></tbody></table></div>
+<p>Do not place spaces between items in an <code>input</code> tag.</p>
+<p><code>noecho</code> is not valid for <code>bool</code> fields.</p>
+<h2 id="user-content-input-order-and-precedence">Input Order and Precedence</h2>
+<p><code>BindInput</code> processes sources in this order:</p>
+<ol>
+<li>environment variables</li>
+<li>command-line flags</li>
+<li>terminal input</li>
+</ol>
+<p>When both an environment variable and a command-line flag supply a valid value for the same field, the flag value takes precedence.</p>
+<p>Terminal input is requested only when that field has not already been recorded as supplied by an earlier source. This makes terminal input useful as an interactive fallback rather than an additional mandatory step.</p>
+<p>Errors encountered during environment variable and flag parsing will be output to the terminal.</p>
+<h2 id="user-content-struct-tags">Struct Tags</h2>
+<h3 id="user-content-input"><code>input</code></h3>
+<p>Selects the permitted input sources and optional <code>noecho</code> behavior.</p>
+<pre><code class="language-go">Host     string `input:"env,flag,term"`
+Password string `input:"term,noecho"`
+</code></pre>
+<p>At least one exported field must have an <code>input</code> tag.</p>
+<h3 id="user-content-name"><code>name</code></h3>
+<p>Overrides the field name used to generate environment-variable and flag names.</p>
+<pre><code class="language-go">Host string `input:"env,flag" name:"server_host"`
+</code></pre>
+<p>This produces:</p>
+<pre><code class="language-text">Environment: SERVER_HOST
+Flag:        -server-host
+</code></pre>
+<p>Names may contain letters, digits, underscores, and hyphens. A name must begin with a letter, end with a letter or digit, and may not exceed 100 characters.</p>
+<p>The exported <code>NameRegexp</code> constant contains the regular expression used for this validation.</p>
+<h3 id="user-content-usage"><code>usage</code></h3>
+<p>Provides help text for command-line flags and prompt text for terminal input.</p>
+<pre><code class="language-go">Port int `input:"flag,term" usage:"Server port number"`
+</code></pre>
+<p>When <code>usage</code> is omitted:</p>
+<ul>
+<li>flag help uses the Go field name</li>
+<li>terminal input uses <code>Enter &lt;FieldName&gt;</code></li>
+</ul>
+<h3 id="user-content-regexp"><code>regexp</code></h3>
+<p>Validates string input.</p>
+<pre><code class="language-go">Host string `input:"env,flag,term" regexp:"^[A-Za-z0-9.-]+$"`
+</code></pre>
+<p><code>regexp</code> may be used only with string fields. An empty or malformed regular expression is considered a configuration error and will cause a panic.</p>
+<h3 id="user-content-min-and-max"><code>min</code> and <code>max</code></h3>
+<p>Set an inclusive range for integer input.</p>
+<pre><code class="language-go">Port int `input:"env,flag,term" min:"1" max:"65535"`
+</code></pre>
+<p>Either tag may be used independently. When omitted, the corresponding limit is the platform <code>int</code> minimum or maximum.</p>
+<p><code>min</code> and <code>max</code> may be used only with integer fields, and <code>min</code> may not be greater than <code>max</code>.</p>
+<h3 id="user-content-prefixes">Prefixes</h3>
+<p><code>SetPrefix</code> prepends a common prefix to every configured environment-variable and flag name.</p>
+<pre><code class="language-go">ui.SetPrefix("myapp_")
+</code></pre>
+<p>A base name of <code>host_name</code> then becomes:</p>
+<pre><code class="language-text">MYAPP_HOST_NAME
+-myapp-host-name
+</code></pre>
+<p>The prefix is transformed using the same environment and flag naming rules. <code>SetPrefix</code> must be called before <code>BindInput</code>, may be called only once, and may not be blank.</p>
+<h2 id="user-content-default-values">Default Values</h2>
+<p>Existing struct values are defaults.</p>
+<pre><code class="language-go">cfg := Config{
+    Host: "localhost",
+    Port: 8080,
+}
+</code></pre>
+<p>If a field is not supplied by any configured source, its current value remains unchanged.</p>
+<p>For terminal input, a blank response keeps the current value.</p>
+<p>Nonzero string and integer defaults are displayed in terminal prompts unless <code>noecho</code> is set. Boolean prompts show the current default as <code>[Y/n]</code> or <code>[y/N]</code>.</p>
+<h2 id="user-content-environment-variables">Environment Variables</h2>
+<p>Missing environment variables are ignored.</p>
+<h3 id="user-content-strings">Strings</h3>
+<p>Strings may be checked with the <code>regexp</code> tag. An empty environment string is accepted as a supplied value and bypasses regular-expression validation.</p>
+<h3 id="user-content-integers">Integers</h3>
+<p>Integer values must parse as a Go <code>int</code> and satisfy any <code>min</code> or <code>max</code> constraints.</p>
+<h3 id="user-content-booleans">Booleans</h3>
+<p>Environment and flag booleans accept these values, case-insensitive:</p>
+<pre><code class="language-text">0
+1
+t
+f
+true
+false
+</code></pre>
+<h2 id="user-content-command-line-flags">Command-Line Flags</h2>
+<p>String and integer values are validated using the same <code>regexp</code>, <code>min</code>, and <code>max</code> configuration used by the other input sources.</p>
+<p>Boolean fields behave as Go boolean flags and may therefore be written in the usual forms, including a bare true flag such as:</p>
+<pre><code class="language-text">-enabled
+</code></pre>
+<p>The package installs <code>PrintUsage</code> as the <code>FlagSet</code> usage function. Generated help can include:</p>
+<ul>
+<li>flag name and type</li>
+<li>usage text</li>
+<li>integer range</li>
+<li>nonzero string or integer default</li>
+<li>associated environment variable</li>
+<li>whether terminal input is available</li>
+<li>whether terminal echo is suppressed</li>
+</ul>
+<p><code>noecho</code> suppresses display of string and integer defaults in this generated help.</p>
+<h3 id="user-content-custom-flagset">Custom FlagSet</h3>
+<p>Call <code>NewFlagSet</code> after <code>NewUserInput</code> and before <code>BindInput</code> when the caller needs direct access to the <code>flag.FlagSet</code>.</p>
+<pre><code class="language-go">ui := userinput.NewUserInput(&amp;cfg)
+fs := ui.NewFlagSet("mycommand")
+_ = fs
+</code></pre>
+<p>Calling <code>NewFlagSet</code> more than once for the same <code>UserInput</code> causes a panic.</p>
+<h2 id="user-content-terminal-input">Terminal Input</h2>
+<p>Interactive input is read directly from <code>/dev/tty</code>, rather than from standard input. This allows terminal prompting even when stdin is redirected.</p>
+<p>String and integer fields repeat the prompt after invalid input.</p>
+<p>Boolean terminal input accepts only "Y" or "N", case insensitive.</p>
+<p>A blank response preserves the current default.</p>
+<h3 id="user-content-suppressed-echo">Suppressed Echo</h3>
+<p>Add <code>noecho</code> to a string or integer field when typed input should not be displayed:</p>
+<pre><code class="language-go">Password string `input:"term,noecho" usage:"Administrator password"`
+PIN      int    `input:"term,noecho" usage:"Administrator PIN"`
+</code></pre>
+<p>A field using <code>noecho</code> does not display its default value in the prompt or package-generated flag help.</p>
+<p><code>noecho</code> cannot be used with a boolean field.</p>
+<h2 id="user-content-validation-and-errors">Validation and Errors</h2>
+<p>The package distinguishes configuration mistakes from user-input errors.</p>
+<h3 id="user-content-configuration-errors">Configuration errors</h3>
+<p>Programming or struct-tag mistakes cause a panic during setup. Examples include:</p>
+<ul>
+<li><code>cfg</code> is not a non-nil pointer to a struct</li>
+<li>no exported field exists</li>
+<li>no field has an <code>input</code> tag</li>
+<li>a configured field has an unsupported kind</li>
+<li>an input source name is unknown</li>
+<li>a <code>name</code> tag is invalid</li>
+<li>duplicate generated names are found</li>
+<li><code>regexp</code> is empty, malformed, or applied to a non-string field</li>
+<li><code>min</code> or <code>max</code> is malformed or applied to a non-integer field</li>
+<li><code>min</code> is greater than <code>max</code></li>
+<li><code>noecho</code> is applied to a boolean field</li>
+<li><code>SetPrefix</code> is called with an invalid prefix or called more than once</li>
+<li><code>BindInput</code> is called more than once</li>
+</ul>
+<h3 id="user-content-user-input-errors">User-input errors</h3>
+<p>Input and validation failures are returned by <code>BindInput</code> as <code>[]error</code>.</p>
+<pre><code class="language-go">errs := ui.BindInput()
+if len(errs) != 0 {
+    for _, err := range errs {
+        log.Print(err)
+    }
+}
+</code></pre>
+<p>Terminal validation is interactive: invalid values are reported at the terminal and the package prompts again.</p>
+<h2 id="user-content-supplied-values">Supplied Values</h2>
+<p><code>Supplied</code> returns a copy of the package's internal map of fields for which an input source recorded a value or validation result.</p>
+<pre><code class="language-go">results := ui.Supplied()
+
+if result, ok := results["Port"]; ok {
+    if result.Valid {
+        fmt.Println("Port was supplied and validated")
+    } else {
+        fmt.Println(result.Err)
+    }
+}
+</code></pre>
+<p>The map is keyed by Go struct field name, not by the environment-variable or flag name.</p>
+<pre><code class="language-go">type SuppliedResult struct {
+    Valid bool
+    Err   error
+}
+</code></pre>
+<h2 id="user-content-public-api">Public API</h2>
+<h3 id="user-content-construction-and-binding">Construction and binding</h3>
+<pre><code class="language-go">func NewUserInput(cfg any) *UserInput
+func (ui *UserInput) BindInput() []error
+</code></pre>
+<h3 id="user-content-naming">Naming</h3>
+<pre><code class="language-go">func (ui *UserInput) SetPrefix(s string)
+</code></pre>
+<h3 id="user-content-supplied-input-reporting">Supplied-input reporting</h3>
+<pre><code class="language-go">func (ui *UserInput) Supplied() map[string]SuppliedResult
+</code></pre>
+<h3 id="user-content-flag-handling">Flag handling</h3>
+<pre><code class="language-go">func (ui *UserInput) NewFlagSet(setname ...string) *flag.FlagSet
+func (ui *UserInput) PrintUsage()
+</code></pre>
+<h3 id="user-content-terminal-helpers">Terminal helpers</h3>
+<p>The userinput package provides two helper functions for terminal input.</p>
+<pre><code class="language-go">func TermReadInput(prompt string) (string, error)
+func TermReadPassword(prompt string) (string, error)
+</code></pre>
+<p><code>TermReadPassword</code> reads text directly from <code>/dev/tty</code> and returns it as a string.</p>
+<p><code>TermReadPassword</code> reads text directly from <code>/dev/tty</code> without echoing it and returns it as a string.</p>
+<h3 id="user-content-exported-supporting-types-and-constants">Exported supporting types and constants</h3>
+<pre><code class="language-go">type InputMode int
+
+const (
+    NormalEcho InputMode = iota
+    SuppressEcho
+)
+
+const NameRegexp = `^[A-Za-z](?:[A-Za-z0-9_-]{0,98}[A-Za-z0-9])?$`
+
+type SuppliedResult struct {
+    Valid bool
+    Err   error
+}
+
+type SuppliedMap map[string]SuppliedResult
+</code></pre>
+<h2 id="user-content-platform-note">Platform Note</h2>
+<p>Interactive terminal support currently depends on <code>/dev/tty</code> and <code>golang.org/x/term</code>. The terminal portion of the package is therefore written for Unix-like systems that provide <code>/dev/tty</code>.</p>
+<p>Environment-variable and command-line flag binding do not themselves require interactive terminal input.</p>
+<p><strong>Note:</strong> <em>Documentation written by Artificial Intelligence and edited by Alleged Intelligence.</em></p>
+    </main>
+  </body>
+</html>
